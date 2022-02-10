@@ -35,6 +35,20 @@ class DropBoxController {
     }
 
     initEvents() {
+        this.btnRename.addEventListener('click', e => {
+            let li = this.getSelection()[0];
+
+            let file = JSON.parse(li.dataset.file);
+
+            let newName = prompt('Renomear o arquivo: ', file.originalFilename);
+
+            if(newName) {
+                file.originalFilename = newName;
+
+                this.getFirebaseRef().child(li.dataset.key).set(file);
+            }
+        });
+
         this.listFilesEl.addEventListener('selectionchange', e => {
             switch (this.getSelection().length) {
                 case 0:
@@ -49,7 +63,7 @@ class DropBoxController {
 
                 default: 
                     this.btnDelete.style.display = 'block';
-                    this.btnDelete.style.display = 'none';
+                    this.btnRename.style.display = 'none';
                 break;
             }
         });
@@ -297,8 +311,6 @@ class DropBoxController {
                 break;
 
             default:
-
-                console.log(file.mimetype)
                 return `
                     <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
                         <title>1357054_617b.jpg</title>
@@ -325,6 +337,8 @@ class DropBoxController {
         let li = document.createElement('li');
 
         li.dataset.key = key;
+        li.dataset.file = JSON.stringify(file);
+
         li.innerHTML = `
             ${this.getFileIconView(file)};
             <div class="name text-center">${file.originalFilename}</div>
