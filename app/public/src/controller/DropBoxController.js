@@ -6,9 +6,11 @@ class DropBoxController {
         this.progressBarEl = this.snackModalEl.querySelector('.mc-progress-bar-fg');
         this.nameFileEl = this.snackModalEl.querySelector('.filename');
         this.timeleftEl = this.snackModalEl.querySelector('.timeleft');
+        this.listFilesEl = document.querySelector('#list-of-files-and-directories');
 
         this.connectFirebase();
         this.initEvents();
+        this.readFiles();
     }
 
     connectFirebase() {        
@@ -125,7 +127,7 @@ class DropBoxController {
     }
 
     getFileIconView(file) {
-        switch (file.type) {
+        switch (file.mimetype) {
             case 'folder':
                 return `
                     <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
@@ -268,6 +270,8 @@ class DropBoxController {
                 break;
 
             default:
+
+                console.log(file.mimetype)
                 return `
                     <svg width="160" height="160" viewBox="0 0 160 160" class="mc-icon-template-content tile__preview tile__preview--icon">
                         <title>1357054_617b.jpg</title>
@@ -286,16 +290,32 @@ class DropBoxController {
                         </g>
                     </svg>
                 `;
-                break;
+            break;
         }
     }
 
-    getFilesView() {
-        return `
-            <li>
-                 ${this.getFileIconView(file)};
-                 <div class="name text-center">Meus Documentos</div>
-            </li>
+    getFilesView(file, key) {
+        let li = document.createElement('li');
+
+        li.dataset.key = key;
+        li.innerHTML = `
+            ${this.getFileIconView(file)};
+            <div class="name text-center">${file.originalFilename}</div>
         `;
+
+        return li;
+    }
+
+    readFiles() {
+        this.getFirebaseRef().on('value', snapshot => {
+            this.listFilesEl.innerHTML = '';
+            
+            snapshot.forEach(snapshotItem => {
+                let key = snapshotItem.key;
+                let data = snapshotItem.val();
+
+                this.listFilesEl.appendChild(this.getFilesView(data, key));
+            });
+        });
     }
 }
