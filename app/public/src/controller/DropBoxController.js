@@ -13,12 +13,12 @@ class DropBoxController {
 
     connectFirebase() {        
         var firebaseConfig = {
-            apiKey: "AIzaSyA3B40x1oXSGoprmM-FcKyS2kW530GO9aY",
-            authDomain: "dropbox-clone-rm.firebaseapp.com",
-            databaseUrl: "https://dropbox-clone-rm.firebaseapp.com",
-            projectId: "dropbox-clone-rm",
-            storageBucket: "dropbox-clone-rm.appspot.com",
-            messagingSenderId: "713235555453",
+            apiKey: "AIzaSyBhBrTuopURR9Mga7ZSuukBl0goS7ZshwA",
+            authDomain: "dropboxrm-clone.firebaseapp.com",
+            databaseURL: "https://dropboxrm-clone-default-rtdb.firebaseio.com",
+            projectId: "dropboxrm-clone",
+            storageBucket: "dropboxrm-clone.appspot.com",
+            messagingSenderId: "1056867369903",
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -30,10 +30,30 @@ class DropBoxController {
         });
 
         this.inputFilesEl.addEventListener('change', event => {
-            this.uploadTask(event.target.files);
+            this.btnSendFilesEl.disabled = true;
+            
+            this.uploadTask(event.target.files).then(responses => {
+                responses.forEach(resp => {
+                    this.getFirebaseRef().push().set(resp.files['input-file']);
+                });
+            }).catch(err => {
+                this.uploadComplete();
+                console.error(err);
+            });
+            
             this.modalShow();
-            this.inputFilesEl.value = '';
+            this.uploadComplete();
         });
+    }
+    
+    uploadComplete() {
+        this.modalShow(false);
+        this.inputFilesEl.value = '';
+        this.btnSendFilesEl.disabled = false;
+    }
+
+    getFirebaseRef() {
+        return firebase.database().ref('files');
     }
 
     modalShow(show = true) {
@@ -50,8 +70,6 @@ class DropBoxController {
                 ajax.open('POST', '/upload');
 
                 ajax.onload = event => {
-                    this.modalShow(false);
-
                     try {
                         resolve(JSON.parse(ajax.responseText));
                     } catch (e) {
@@ -60,7 +78,6 @@ class DropBoxController {
                 }
 
                 ajax.onerror = event => {
-                    this.modalShow(false);
                     reject(event);
                 }
 
