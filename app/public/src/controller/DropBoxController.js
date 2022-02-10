@@ -8,6 +8,9 @@ class DropBoxController {
         this.nameFileEl = this.snackModalEl.querySelector('.filename');
         this.timeleftEl = this.snackModalEl.querySelector('.timeleft');
         this.listFilesEl = document.querySelector('#list-of-files-and-directories');
+        this.btnNewFolder = document.querySelector('#btn-new-folder');
+        this.btnRename = document.querySelector('#btn-rename');
+        this.btnDelete = document.querySelector('#btn-delete');
 
         this.connectFirebase();
         this.initEvents();
@@ -27,9 +30,28 @@ class DropBoxController {
         firebase.initializeApp(firebaseConfig);
     }
 
+    getSelection() {
+        return this.listFilesEl.querySelectorAll('.selected');
+    }
+
     initEvents() {
         this.listFilesEl.addEventListener('selectionchange', e => {
-            console.log('selectionchange')
+            switch (this.getSelection().length) {
+                case 0:
+                    this.btnDelete.style.display = 'none';
+                    this.btnRename.style.display = 'none';
+                break;
+
+                case 1:
+                    this.btnDelete.style.display = 'block';
+                    this.btnRename.style.display = 'block';
+                break;
+
+                default: 
+                    this.btnDelete.style.display = 'block';
+                    this.btnDelete.style.display = 'none';
+                break;
+            }
         });
 
         this.btnSendFilesEl.addEventListener('click', event => {
@@ -315,8 +337,7 @@ class DropBoxController {
 
     initEventsLi(li) {
         li.addEventListener('click', e => {
-            this.listFilesEl.dispatchEvent(this.onSelectionChange);
-
+            
             if(e.shiftKey) {
                 let firstLi = this.listFilesEl.querySelector('.selected');
                 
@@ -324,20 +345,21 @@ class DropBoxController {
                     let indexStart;
                     let indexEnd;
                     let lis = li.parentElement.childNodes;
-
+                    
                     lis.forEach((el, index) => {
                         if(firstLi === el) indexStart = index;
                         if(li === el) indexEnd = index;
                     });
-
+                    
                     let index = [indexStart, indexEnd].sort();
-
+                    
                     lis.forEach((el, i) => {
                         if(i >= index[0] && i <= index[1]) {
                             el.classList.add('selected');
                         }
                     });
-
+                    
+                    this.listFilesEl.dispatchEvent(this.onSelectionChange);
                     return true;
                 }
             } 
@@ -349,6 +371,7 @@ class DropBoxController {
             }
 
             li.classList.toggle('selected');
+            this.listFilesEl.dispatchEvent(this.onSelectionChange);
         });
     }
 
