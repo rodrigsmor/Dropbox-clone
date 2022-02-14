@@ -123,19 +123,28 @@ class DropBoxController {
         });
 
         this.inputFilesEl.addEventListener('change', event => {
+            this.startUploadTime = Date.now();
             this.btnSendFilesEl.disabled = true;
             
             this.uploadTask(event.target.files).then(responses => {
                 responses.forEach(resp => {
-                    this.getFirebaseRef().push().set(resp.files['input-file']);
+                    resp.ref.getDownloadURL().then(data => {
+                        this.getFirebaseRef().push().set({
+                            originalFilename: resp.name,
+                            mimetype: resp.contentType,
+                            filepath: data,
+                            size: resp.size
+                        });
+                    });
                 });
+
+                this.uploadComplete();
             }).catch(err => {
                 this.uploadComplete();
                 console.error(err);
             });
             
             this.modalShow();
-            this.uploadComplete();
         });
     }
     
@@ -188,23 +197,33 @@ class DropBoxController {
 
     uploadTask(files) {
         let promises = [];
-        
-        [...files].forEach(file => {
-            let formData = new FormData();
-    
-            formData.append('input-file', file);
 
-            promises.push(this.ajax(
-                '/upload', 
-                'POST', 
-                formData, 
-                (e) => {
-                    this.uploadProgress(e, file);
-                }, 
-                () => {
-                    this.startUploadTime = Date.now();
-                }
-            ));
+        [...files].forEach(file => {
+            promises.push(new Promise((resolve, reject) => {
+                let fileRef = firebase.storage().ref(this.currentFolder.join('/')).child(file.name);
+                let task = fileRef.put(file);
+    
+                task.on(
+                    'state_changed', 
+                    snapshot => {
+                        this.uploadProgress({
+                            loaded: snapshot.bytesTransferred,
+                            total: snapshot.totalBytes
+                        }, file);
+                    }, 
+                    error => {
+                        console.error(error);
+                        reject(error);
+                    },
+                    () => {
+                        fileRef.getMetadata().then(metadata => {
+                            resolve(metadata);
+                        }).catch(err => {
+                            reject(err);
+                        });
+                    }
+                );
+            }));
         });
 
         return Promise.all(promises);
@@ -248,7 +267,7 @@ class DropBoxController {
                         </g>
                     </svg>
                 `;
-                break;
+            break;
 
             case 'audio/mp3':
             case 'audio/ogg':
@@ -331,7 +350,7 @@ class DropBoxController {
                             c-0.131-1.296,1.072-0.867,1.753-0.876c0.796-0.011,1.668,0.118,1.588,1.293C97.394,93.857,97.226,94.871,96.229,94.8z"></path>
                     </svg>
                 `;
-                break;
+            break;
 
             case 'image/jpeg':
             case 'image/jpg':
@@ -377,7 +396,7 @@ class DropBoxController {
                         </g>
                     </svg>
                 `;
-                break;
+            break;
 
             default:
                 return `
