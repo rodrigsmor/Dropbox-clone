@@ -38,6 +38,45 @@ class DropBoxController {
         return this.listFilesEl.querySelectorAll('.selected');
     }
 
+    removeFolderTask(ref, name) {
+        return new Promise((resolve, reject) => {
+            let folderRef = this.getFirebaseRef(ref + '/' + name);
+
+            folderRef.on('value', snapshot => {
+                folderRef.off('value');
+
+                snapshot.forEach(item => {
+                    let data = item.val();
+                    data.key = item.key;
+
+                    if(data.mimetype === 'folder') {
+                        this.removeFolderTask(ref + '/' + name, data.originalFilename).then(() => {
+                            resolve({
+                                fields: {
+                                    key: data.key
+                                }
+                            })
+                        }).catch(err => {
+                            reject(err);
+                        });
+                    } else if(data.mimetype) {
+                        this.removeFile(ref + '/' + name, data.originalFilename).then(() => {
+                            resolve({
+                                fields: {
+                                    key: data.key
+                                }
+                            })
+                        }).catch(err => {
+                            reject(err);
+                        });;
+                    }
+                });
+
+                folderRef.remove();
+            });
+        });
+    }
+
     removeTask(){
         let promises = [];
 
@@ -46,20 +85,38 @@ class DropBoxController {
             let key = li.dataset.key;
     
             promises.push(new Promise((resolve, reject) => {
-                let fileRef = firebase.storage().ref(this.currentFolder.join('/')).child(file.originalFilename);
-                fileRef.delete().then(() => {
-                    resolve({
-                        fields: {
-                            key
-                        }
+                if(file.mimetype === 'folder') {
+                    this.removeFolderTask(
+                        this.currentFolder.join('/'),
+                        file.originalFilename
+                    ).then(() => {
+                        resolve({
+                            fields: {
+                                key
+                            }
+                        });
                     });
-                }).catch(err => {
-                    reject(err);
-                });
+                } else if(file.mimetype) {    
+                    this.removeFile(
+                        this.currentFolder.join('/'),
+                        file.originalFilename
+                    ).then(() => {
+                        resolve({
+                            fields: {
+                                key
+                            }
+                        });
+                    });
+                }
             }));
         });
-
+        
         return Promise.all(promises);
+    }
+    
+    removeFile(ref, name) {
+        let fileRef = firebase.storage().ref(ref).child(name);
+        return fileRef.delete();
     }
 
     initEvents() {
